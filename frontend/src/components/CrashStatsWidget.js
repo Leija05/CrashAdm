@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { api, formatApiError } from "../lib/api";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import {
   Bar,
   BarChart,
@@ -68,6 +69,7 @@ export default function CrashStatsWidget() {
   const [impacts, setImpacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeImpactId, setActiveImpactId] = useState(null);
 
   const fetchImpacts = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -144,6 +146,30 @@ export default function CrashStatsWidget() {
     return trendChart.reduce((max, item) => (item.total > max.total ? item : max), trendChart[0]);
   }, [trendChart]);
 
+  const impactsWithGps = useMemo(
+    () => impacts.filter((i) => i.lat != null && i.lng != null),
+    [impacts],
+  );
+  const mapCenter = useMemo(() => {
+    if (!impactsWithGps.length) return [19.4326, -99.1332];
+    const sum = impactsWithGps.reduce(
+      (acc, i) => ({ lat: acc.lat + i.lat, lng: acc.lng + i.lng }),
+      { lat: 0, lng: 0 },
+    );
+    return [sum.lat / impactsWithGps.length, sum.lng / impactsWithGps.length];
+  }, [impactsWithGps]);
+  const topImpacts = useMemo(
+    () =>
+      [...impacts]
+        .sort((a, b) => severityScore(b) - severityScore(a))
+        .slice(0, 8),
+    [impacts],
+  );
+  const activeImpact = useMemo(
+    () => impacts.find((i) => i.id === activeImpactId) || null,
+    [impacts, activeImpactId],
+  );
+
   return (
     <>
       <button
@@ -204,6 +230,72 @@ export default function CrashStatsWidget() {
                           <ResponsiveContainer width="100%" height="85%"><LineChart data={trendChart}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><XAxis dataKey="day" stroke="#a3a3a3" fontSize={10} /><YAxis stroke="#a3a3a3" fontSize={10} allowDecimals={false} /><Tooltip contentStyle={{ background: "#0f1114", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }} /><Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2.5} dot={{ fill: "#22d3ee", r: 3 }} /></LineChart></ResponsiveContainer>
                         </div>
                       </div>
+
+                      <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                          <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-neutral-500">Nodos de riesgo (hover/click)</div>
+                          <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                            {topImpacts.map((impact) => {
+                              const active = impact.id === activeImpactId;
+                              return (
+                                <button
+                                  key={impact.id}
+                                  onMouseEnter={() => setActiveImpactId(impact.id)}
+                                  onClick={() => setActiveImpactId(impact.id)}
+                                  className={`w-full text-left rounded-lg border px-3 py-2 transition-all ${
+                                    active
+                                      ? "border-cyan-400/60 bg-cyan-500/15"
+                                      : "border-white/10 bg-black/30 hover:border-cyan-400/30"
+                                  }`}
+                                >
+                                  <div className="text-xs font-semibold">{impact.name || impact.driver_name || "Usuario"}</div>
+                                  <div className="text-[10px] text-neutral-400">{(impact.ts || impact.created_at || "").slice(0, 19).replace("T", " ")}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="h-72 rounded-xl border border-white/10 overflow-hidden">
+                          <MapContainer center={mapCenter} zoom={11} className="h-full w-full">
+                            <TileLayer
+                              attribution='&copy; <a href="https://carto.com/">carto.com</a>'
+                              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                            />
+                            {impactsWithGps.map((i) => {
+                              const active = i.id === activeImpactId;
+                              return (
+                                <CircleMarker
+                                  key={i.id}
+                                  center={[i.lat, i.lng]}
+                                  radius={active ? 12 : 7}
+                                  pathOptions={{ color: active ? "#22d3ee" : "#ef4444", fillOpacity: active ? 0.85 : 0.55 }}
+                                  eventHandlers={{
+                                    mouseover: () => setActiveImpactId(i.id),
+                                    click: () => setActiveImpactId(i.id),
+                                  }}
+                                >
+                                  <Popup>
+                                    <div className="text-xs">
+                                      <div className="font-semibold">{i.name || i.driver_name || "Usuario"}</div>
+                                      <div>G-Force: {i.gforce?.toFixed?.(2) || "—"}G</div>
+                                      <div>Estado: {STATUS_LABEL[i.status] || i.status || "—"}</div>
+                                    </div>
+                                  </Popup>
+                                </CircleMarker>
+                              );
+                            })}
+                          </MapContainer>
+                        </div>
+                      </div>
+
+                      {activeImpact ? (
+                        <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-xs">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-cyan-200/80 mb-1">Detalle del nodo seleccionado</div>
+                          <div className="font-semibold">{activeImpact.name || activeImpact.driver_name || "Usuario"}</div>
+                          <div>Correo: {activeImpact.email || activeImpact.driver_email || "—"}</div>
+                          <div>Choque: {activeImpact.gforce?.toFixed?.(2) || "—"}G · {activeImpact.severity_label || "Sin etiqueta"} · {STATUS_LABEL[activeImpact.status] || activeImpact.status || "—"}</div>
+                        </div>
+                      ) : null}
 
                       <div className="mt-4 flex items-start gap-2 text-[11px] leading-relaxed text-neutral-500"><Activity className="mt-0.5 h-3 w-3 flex-shrink-0" />La severidad se promedia en escala 1-4: baja, media, alta y crítica.</div>
                     </>

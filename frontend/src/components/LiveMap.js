@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Fix leaflet default icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -24,9 +24,16 @@ const hasCoords = (d) => typeof d?.lat === "number" && typeof d?.lng === "number
 
 function FocusController({ focusDriver }) {
   const map = useMap();
+  const lastFocusedIdRef = useRef(null);
   useEffect(() => {
-    if (focusDriver && hasCoords(focusDriver)) {
+    if (
+      focusDriver &&
+      hasCoords(focusDriver) &&
+      focusDriver.id &&
+      lastFocusedIdRef.current !== focusDriver.id
+    ) {
       map.flyTo([focusDriver.lat, focusDriver.lng], 15, { duration: 0.8 });
+      lastFocusedIdRef.current = focusDriver.id;
     }
   }, [focusDriver, map]);
   return null;
