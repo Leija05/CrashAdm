@@ -141,6 +141,31 @@ export default function CrashStatsWidget() {
     }));
   }, [impacts]);
 
+
+  const hourlyChart = useMemo(() => {
+    const map = new Map();
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date();
+      d.setMinutes(0, 0, 0);
+      d.setHours(d.getHours() - i);
+      const key = d.toISOString().slice(0, 13);
+      map.set(key, 0);
+    }
+    impacts.forEach((i) => {
+      const ts = i.ts || i.created_at;
+      if (!ts) return;
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return;
+      d.setMinutes(0, 0, 0);
+      const key = d.toISOString().slice(0, 13);
+      if (map.has(key)) map.set(key, map.get(key) + 1);
+    });
+    return [...map.entries()].map(([hour, total]) => ({
+      label: `${hour.slice(5,7)}/${hour.slice(8,10)} ${hour.slice(11,13)}:00`,
+      total,
+    }));
+  }, [impacts]);
+
   const peakDay = useMemo(() => {
     if (!trendChart.length) return { day: "—", total: 0 };
     return trendChart.reduce((max, item) => (item.total > max.total ? item : max), trendChart[0]);
@@ -175,7 +200,7 @@ export default function CrashStatsWidget() {
       <button
         data-testid="open-crash-stats"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyan-500/40 hover:bg-cyan-500/10 text-[10px] uppercase tracking-[0.25em] text-neutral-300 hover:text-cyan-300 transition-all"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-[10px] uppercase tracking-[0.25em] text-neutral-300 hover:text-red-300 transition-all"
         title="Estadísticas de choques de los últimos 30 días"
         aria-expanded={open}
       >
@@ -203,9 +228,9 @@ export default function CrashStatsWidget() {
                     <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">{error}</div>
                   ) : (
                     <>
-                      <div className="mb-4 text-[10px] uppercase tracking-[0.25em] text-cyan-300/70">Se actualiza automáticamente cada 10 segundos</div>
+                      <div className="mb-4 text-[10px] uppercase tracking-[0.25em] text-red-300/70">Se actualiza automáticamente cada 10 segundos</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4"><div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-200/80"><TrendingUp className="h-3 w-3" /> Choques/día</div><div className="mt-2 font-mono text-3xl font-bold text-cyan-200">{stats.perDay.toFixed(2)}</div></div>
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4"><div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-red-200/80"><TrendingUp className="h-3 w-3" /> Choques/día</div><div className="mt-2 font-mono text-3xl font-bold text-red-200">{stats.perDay.toFixed(2)}</div></div>
                         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"><div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-amber-200/80"><TriangleAlert className="h-3 w-3" /> Severidad media</div><div className="mt-2 font-mono text-3xl font-bold text-amber-200">{stats.avgSeverity ? stats.avgSeverity.toFixed(1) : "—"}</div><div className="text-[10px] uppercase tracking-[0.2em] text-amber-100/60">{severityLabel(stats.avgSeverity)}</div></div>
                       </div>
 
@@ -218,8 +243,8 @@ export default function CrashStatsWidget() {
 
                       <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
                         <div className="h-48 rounded-xl border border-white/10 bg-white/[0.02] p-2">
-                          <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-neutral-500">Estado de alertas</div>
-                          <ResponsiveContainer width="100%" height="85%"><BarChart data={statusChart}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><XAxis dataKey="name" stroke="#a3a3a3" fontSize={10} /><YAxis stroke="#a3a3a3" fontSize={10} allowDecimals={false} /><Tooltip contentStyle={{ background: "#0f1114", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }} /><Bar dataKey="value" radius={[8, 8, 0, 0]}>{statusChart.map((e) => <Cell key={e.name} fill={e.color} />)}</Bar></BarChart></ResponsiveContainer>
+                          <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-neutral-500">Choques por fecha/hora</div>
+                          <ResponsiveContainer width="100%" height="85%"><BarChart data={hourlyChart}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><XAxis dataKey="label" interval={1} angle={-25} textAnchor="end" height={55} stroke="#a3a3a3" fontSize={10} /><YAxis stroke="#a3a3a3" fontSize={10} allowDecimals={false} /><Tooltip contentStyle={{ background: "#0f1114", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }} /><Bar dataKey="total" radius={[6, 6, 0, 0]} fill="#ef4444" /></BarChart></ResponsiveContainer>
                         </div>
                         <div className="h-48 rounded-xl border border-white/10 bg-white/[0.02] p-2">
                           <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-neutral-500">Composición</div>
@@ -227,7 +252,7 @@ export default function CrashStatsWidget() {
                         </div>
                         <div className="h-48 rounded-xl border border-white/10 bg-white/[0.02] p-2">
                           <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-neutral-500">Tendencia 7 días</div>
-                          <ResponsiveContainer width="100%" height="85%"><LineChart data={trendChart}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><XAxis dataKey="day" stroke="#a3a3a3" fontSize={10} /><YAxis stroke="#a3a3a3" fontSize={10} allowDecimals={false} /><Tooltip contentStyle={{ background: "#0f1114", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }} /><Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2.5} dot={{ fill: "#22d3ee", r: 3 }} /></LineChart></ResponsiveContainer>
+                          <ResponsiveContainer width="100%" height="85%"><LineChart data={trendChart}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" /><XAxis dataKey="day" stroke="#a3a3a3" fontSize={10} /><YAxis stroke="#a3a3a3" fontSize={10} allowDecimals={false} /><Tooltip contentStyle={{ background: "#0f1114", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10 }} /><Line type="monotone" dataKey="total" stroke="#ef4444" strokeWidth={2.5} dot={{ fill: "#ef4444", r: 3 }} /></LineChart></ResponsiveContainer>
                         </div>
                       </div>
 
@@ -244,8 +269,8 @@ export default function CrashStatsWidget() {
                                   onClick={() => setActiveImpactId(impact.id)}
                                   className={`w-full text-left rounded-lg border px-3 py-2 transition-all ${
                                     active
-                                      ? "border-cyan-400/60 bg-cyan-500/15"
-                                      : "border-white/10 bg-black/30 hover:border-cyan-400/30"
+                                      ? "border-red-400/60 bg-red-500/15"
+                                      : "border-white/10 bg-black/30 hover:border-red-400/30"
                                   }`}
                                 >
                                   <div className="text-xs font-semibold">{impact.name || impact.driver_name || "Usuario"}</div>
@@ -268,7 +293,7 @@ export default function CrashStatsWidget() {
                                   key={i.id}
                                   center={[i.lat, i.lng]}
                                   radius={active ? 12 : 7}
-                                  pathOptions={{ color: active ? "#22d3ee" : "#ef4444", fillOpacity: active ? 0.85 : 0.55 }}
+                                  pathOptions={{ color: active ? "#ef4444" : "#ef4444", fillOpacity: active ? 0.85 : 0.55 }}
                                   eventHandlers={{
                                     mouseover: () => setActiveImpactId(i.id),
                                     click: () => setActiveImpactId(i.id),
@@ -289,8 +314,8 @@ export default function CrashStatsWidget() {
                       </div>
 
                       {activeImpact ? (
-                        <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-xs">
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-cyan-200/80 mb-1">Detalle del nodo seleccionado</div>
+                        <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-red-200/80 mb-1">Detalle del nodo seleccionado</div>
                           <div className="font-semibold">{activeImpact.name || activeImpact.driver_name || "Usuario"}</div>
                           <div>Correo: {activeImpact.email || activeImpact.driver_email || "—"}</div>
                           <div>Choque: {activeImpact.gforce?.toFixed?.(2) || "—"}G · {activeImpact.severity_label || "Sin etiqueta"} · {STATUS_LABEL[activeImpact.status] || activeImpact.status || "—"}</div>
