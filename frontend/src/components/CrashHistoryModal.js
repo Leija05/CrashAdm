@@ -60,13 +60,21 @@ function fmt(iso) {
   return new Date(iso).toLocaleString();
 }
 
-function MapFlyTo({ position, zoom = 15 }) {
+function MapFlyTo({ impact }) {
   const map = useMap();
+  const lastFocusedIdRef = useRef(null);
   useEffect(() => {
-    if (position && Array.isArray(position) && position.length === 2) {
-      map.flyTo(position, zoom, { duration: 0.8 });
+    if (
+      impact &&
+      impact.id &&
+      impact.lat != null &&
+      impact.lng != null &&
+      lastFocusedIdRef.current !== impact.id
+    ) {
+      map.flyTo([impact.lat, impact.lng], 15, { duration: 0.8 });
+      lastFocusedIdRef.current = impact.id;
     }
-  }, [position, zoom, map]);
+  }, [impact, map]);
   return null;
 }
 
@@ -149,11 +157,6 @@ export default function CrashHistoryModal({ open, onClose }) {
     () => impacts.find((i) => i.id === selectedId) || null,
     [impacts, selectedId],
   );
-
-  const flyTarget =
-    selected && selected.lat && selected.lng
-      ? [selected.lat, selected.lng]
-      : null;
 
   const handleSelect = (imp, opts = {}) => {
     if (!imp) return;
@@ -462,7 +465,7 @@ export default function CrashHistoryModal({ open, onClose }) {
                     </CircleMarker>
                   );
                 })}
-                <MapFlyTo position={flyTarget} zoom={15} />
+                <MapFlyTo impact={selected} />
               </MapContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-neutral-500 text-xs uppercase tracking-[0.3em]">
