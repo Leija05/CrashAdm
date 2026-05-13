@@ -200,28 +200,28 @@ export default function CrashStatsWidget() {
       <button
         data-testid="open-crash-stats"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-[10px] uppercase tracking-[0.25em] text-neutral-300 hover:text-red-300 transition-all"
-        title="Estadísticas de choques de los últimos 30 días"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-500/30 hover:border-red-400/80 hover:bg-red-500/10 text-[10px] uppercase tracking-[0.25em] text-neutral-200 hover:text-red-200 transition-all"
+        title="Ventana avanzada de estadísticas y gráficas"
         aria-expanded={open}
       >
-        <BarChart3 className="h-3.5 w-3.5" /> Estadísticas
+        <BarChart3 className="h-3.5 w-3.5" /> Estadísticas avanzadas
       </button>
 
       {open
         ? createPortal(
             <div className="fixed inset-0 z-[2200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3" data-testid="crash-stats-modal" role="dialog" aria-modal="true">
-              <div className="w-full max-w-5xl bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="w-[98vw] h-[94vh] bg-gradient-to-br from-black via-[#110607] to-[#1b0608] border border-red-500/30 rounded-2xl shadow-2xl overflow-hidden panel-entrance">
                 <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/10">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.3em] text-neutral-500">C.R.A.S.H. · Estadísticas</div>
-                    <h2 className="text-xl font-bold tracking-tight">Resumen de choques</h2>
+                    <div className="text-[10px] uppercase tracking-[0.3em] text-neutral-500">C.R.A.S.H. · Estadísticas avanzadas</div>
+                    <h2 className="text-xl font-bold tracking-tight">Ventana avanzada de estadísticas y gráficas</h2>
                   </div>
                   <button onClick={() => setOpen(false)} className="h-9 w-9 rounded-lg border border-white/10 hover:border-red-500/40 hover:bg-red-500/10 flex items-center justify-center transition-all" title="Cerrar">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="p-5">
+                <div className="p-5 h-[calc(94vh-80px)] overflow-y-auto">
                   {loading ? (
                     <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-neutral-400"><Loader2 className="h-4 w-4 animate-spin" /> Calculando estadísticas...</div>
                   ) : error ? (

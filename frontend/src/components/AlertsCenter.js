@@ -76,7 +76,7 @@ export default function AlertsCenter({ alerts, setAlerts, lastImpactId, onSelect
   }, [lastImpactId, muted]);
 
   const active = useMemo(() => {
-    const list = (alerts || []).filter((x) => x.status === "pending");
+    const list = (alerts || []).filter((x) => x.status === "pending" && x.alerts_sent === false);
     const dedupByDriver = new Map();
     list
       .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
@@ -117,7 +117,7 @@ export default function AlertsCenter({ alerts, setAlerts, lastImpactId, onSelect
 
   // Refetch history when an alert is updated via WS (so just-acked ones appear)
   const lastAlertSig = useMemo(
-    () => (alerts || []).filter((a) => a.status !== "pending").map((a) => `${a.id}:${a.status}`).join(","),
+    () => (alerts || []).filter((a) => a.status !== "pending" || a.alerts_sent === true).map((a) => `${a.id}:${a.status}:${a.alerts_sent}`).join(","),
     [alerts],
   );
   useEffect(() => {
@@ -250,8 +250,12 @@ export default function AlertsCenter({ alerts, setAlerts, lastImpactId, onSelect
             </span>
           </div>
         ) : (
-          (tab === "active" ? active : history).map((a) => {
-            const isCrit = a.status === "pending";
+          (tab === "active"
+            ? active
+            : [...(alerts || []).filter((a) => a.status === "pending" && a.alerts_sent === true), ...history]
+          ).map((a) => {
+            const isCrit = a.status === "pending" && a.alerts_sent === false;
+            const isSent = a.alerts_sent === true;
             return (
               <div
                 key={a.id}
@@ -259,8 +263,8 @@ export default function AlertsCenter({ alerts, setAlerts, lastImpactId, onSelect
                 className={`rounded-xl border p-4 transition-all ${
                   isCrit
                     ? "bg-red-500/[0.08] border-red-500/40"
-                    : a.status === "acknowledged"
-                    ? "bg-emerald-500/[0.04] border-emerald-500/20"
+                    : a.status === "acknowledged" || isSent
+                    ? "bg-emerald-500/[0.07] border-emerald-500/40"
                     : "bg-white/[0.03] border-white/10"
                 }`}
               >
@@ -276,7 +280,7 @@ export default function AlertsCenter({ alerts, setAlerts, lastImpactId, onSelect
                         </span>
                       ) : null}
                       <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-500">
-                        {a.type === "impact" ? "Impacto detectado" : a.type}
+                        {isCrit ? "Impacto detectado · Prioridad máxima" : isSent ? "Emergencia notificada" : a.type === "impact" ? "Impacto detectado" : a.type}
                       </span>
                     </div>
                     <button

@@ -196,3 +196,20 @@ body[data-theme='light'] .leaflet-container {
 .red-accent-panel{position:relative;}
 .red-accent-panel::after{content:"";position:absolute;inset:8px;border:1px solid rgba(239,68,68,.22);border-radius:14px;pointer-events:none;}
 body[data-theme='light'] .red-accent-panel::after{border-color:rgba(220,38,38,.28);}
+
+@keyframes panelEntrance {
+  0% { opacity: 0; transform: translateY(10px) scale(0.995); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.panel-entrance {
+  animation: panelEntrance 280ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-entrance,
+  .alert-flashing,
+  .crash-marker .pulse {
+    animation: none !important;
+  }
+}
