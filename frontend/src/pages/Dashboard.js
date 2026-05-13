@@ -30,7 +30,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-screen w-full p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 overflow-hidden bg-[#0A0A0A]">
+    <div className="h-screen w-full p-3 lg:p-4 flex flex-col gap-3 lg:gap-4 overflow-hidden bg-[#0A0A0A] red-accent-panel">
       <Topbar
         status={status}
         alertCount={activeAlertCount}
